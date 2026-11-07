@@ -16,24 +16,35 @@ jobs:
 
       - name: Auto-Generate Fresh Configuration
         run: |
-          # Полностью вычищаем старые файлы и ставим права доступа
+          # Повністю вичищаємо старі конфіги та виставляємо права
           rm -f buildozer.spec
           chmod -R 777 .
           
-          # Устанавливаем легкий билд для генерации конфига
+          # Встановлюємо Buildozer для генерації чистого файлу
           pip install --user buildozer
           ~/.local/bin/buildozer init
           
-          # Настройки под твой Realme GT 5G и сочные арты
+          # --- АВТОМАТИЧНЕ НАЛАШТУВАННЯ ДЛЯ REALME GT 5G ТА ТВOЇХ АРТІВ ---
+          # 1. Налаштування версії Android API
           sed -i 's/android.minapi = .*/android.minapi = 29/' buildozer.spec
           sed -i 's/android.api = .*/android.api = 35/' buildozer.spec
           sed -i 's/android.archs = .*/android.archs = arm64-v8a/' buildozer.spec
+          
+          # 2. Включення розширень файлів для зашивки арів всередину APK
           sed -i 's/source.include_exts = .*/source.include_exts = py,png,json/' buildozer.spec
+          
+          # 3. Додавання залежностей Kivy та Python
           sed -i 's/requirements = .*/requirements = python3,kivy==2.3.0,pillow,requests/' buildozer.spec
+          
+          # 4. Вшиваємо твою нову іконку додатка
           sed -i 's/# icon.filename = .*/icon.filename = icon.png/' buildozer.spec
+          
+          # 5. Вшиваємо твою круту фіолетову неонову заставку (Splash Screen)
+          sed -i 's/# presplash.filename = .*/presplash.filename = yui_splash.png/' buildozer.spec
 
       - name: Build Clean APK via Official Buildozer Docker Container
-        uses: ArtemGovorov/buildozer-action@v1
+        # 🟢 ТУТ ВИПРАВЛЕНO: Назва репозиторію тепер повністю маленькими літерами
+        uses: artemgovorov/buildozer-action@v1
         with:
           command: 'android debug'
 
