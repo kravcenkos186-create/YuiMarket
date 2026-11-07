@@ -41,7 +41,11 @@ jobs:
           python -m pip install buildozer "Cython<3"
 
       - name: Build Android debug APK
-        run: buildozer -v android debug
+        run: |
+          set +e
+          yes | buildozer -v android debug
+          status=${PIPESTATUS[1]}
+          exit "$status"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
