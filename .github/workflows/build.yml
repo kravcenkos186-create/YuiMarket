@@ -8,48 +8,46 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    # 🟢 ВИПРАВЛЕНО: Пересідаємо на найсвіжіший та найшвидший сервер GitHub для миттєвого старту!
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-
-      - name: Install System Dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev libbz2-dev libsqlite3-dev libssl-dev libgdbm-dev libgdbm-compat-dev liblzma-dev libffi-dev uuid-dev tar docutils reverse-depends
-          pip install --upgrade pip
-          # Сувора фіксація стабільного Cython під Kivy 2.3.0
-          pip install "cython<3.0.0" virtualenv pillow requests kivy==2.3.0 buildozer
-
       - name: Auto-Generate Fresh Configuration
         run: |
+          # Повністю вичищаємо старі конфіги та виставляємо повні права
           rm -f buildozer.spec
           chmod -R 777 .
-          buildozer init
           
-          # --- СТАБІЛЬНІ НАЛАШТУВАННЯ ДЛЯ REALME GT 5G ---
+          # Ініціалізуємо свіжий чистовий Buildozer
+          pip install --user buildozer
+          ~/.local/bin/buildozer init
+          
+          # --- СУВОРІ НАЛАШТУВАННЯ ПІД REALME GT 5G ТА АРТИ ---
           sed -i 's/android.minapi = .*/android.minapi = 29/' buildozer.spec
-          sed -i 's/android.api = .*/android.api = 33/' buildozer.spec
+          sed -i 's/android.api = .*/android.api = 35/' buildozer.spec
           sed -i 's/android.archs = .*/android.archs = arm64-v8a/' buildozer.spec
+          
+          # Включаємо картинки та json файли всередину APK
           sed -i 's/source.include_exts = .*/source.include_exts = py,png,json/' buildozer.spec
+          
+          # Додаємо залежності Kivy та Python
           sed -i 's/requirements = .*/requirements = python3,kivy==2.3.0,pillow,requests/' buildozer.spec
           
-          # Вшиваємо твої арти
+          # Зашиваємо твою круту іконку та заставку з градієнтом
           sed -i 's/# icon.filename = .*/icon.filename = icon.png/' buildozer.spec
           sed -i 's/# presplash.filename = .*/presplash.filename = yui_splash.png/' buildozer.spec
+          
+          # Автоматично приймаємо всі ліцензії Android SDK
           sed -i 's/# android.accept_sdk_license = .*/android.accept_sdk_license = True/' buildozer.spec
           
-          # 🟢 ГОЛОВНЕ: Вмикаємо лог на максимум, щоб бачити кожен крок збірки!
+          # Вмикаємо максимальний рівень логів для повного контролю розробника
           sed -i 's/log_level = .*/log_level = 2/' buildozer.spec
 
-      - name: Build Clean APK via Kivy Action
-        # Використовуємо офіційний Docker, але на стабільній Ubuntu 20.04
+      - name: Build Clean APK via Official Kivy Action
+        # Використовуємо стабільний Docker-білдер від творців Kivy
         uses: kivy/buildozer-action@v1
         with:
           command: 'android debug'
