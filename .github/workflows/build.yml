@@ -33,14 +33,20 @@ jobs:
 
       - name: Force Android 10 to Newest API Support
         run: |
-          # Створюємо конфіг з нуля з правильними інструкціями
+          # Видаляємо старий конфіг, щоб не було конфліктів
+          rm -f buildozer.spec
+          
+          # Створюємо чистий свіжий конфіг
           buildozer init
           sed -i 's/android.minapi = .*/android.minapi = 29/' buildozer.spec
           sed -i 's/android.api = .*/android.api = 35/' buildozer.spec
           sed -i 's/android.archs = .*/android.archs = arm64-v8a/' buildozer.spec
           sed -i 's/source.include_exts = .*/source.include_exts = py,png,json/' buildozer.spec
           sed -i 's/requirements = .*/requirements = python3,kivy,pillow,requests/' buildozer.spec
-
+          
+          # 🔥 ЖОРСТКО ВШИВАЄМО НАШУ КРУТУ АНІМЕ-ІКОНКУ ЮІ
+          sed -i 's/# icon.filename = .*/icon.filename = icon.png/' buildozer.spec
+          
       - name: Build Clean Android 10+ APK via Buildozer Autonomous SDK
         run: |
           # Автоматично приймаємо ліцензії Гугла прямо всередині самого Булдозера
