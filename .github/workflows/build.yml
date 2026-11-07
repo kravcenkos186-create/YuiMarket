@@ -14,51 +14,45 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Set up Python Environment
+      - name: Set up Python 3.10
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-
-      - name: Install Android SDK Automatically
-        uses: android-actions/setup-android@v3
-        with:
-          api-level: 35
-          build-tools: 35.0.0
+          python-version: '3.10'
 
       - name: Install System Dependencies
         run: |
-          pip install --user --upgrade buildozer cython virtualenv requests pillow
           sudo apt-get update
-          sudo apt-get install -y git zip unzip colordiff ccache autoconf libtool pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev libsqlite3-dev sqlite3 bzip2 libbz2-dev libltdl-dev libgmp-dev execstack libstdc++6
+          sudo apt-get install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev libbz2-dev libsqlite3-dev libssl-dev libgdbm-dev libgdbm-compat-dev liblzma-dev libffi-dev uuid-dev tar docutils reverse-depends
+          # Додаткові залежності для Kivy/Клієнта
+          pip install --upgrade pip
+          pip install cython virtualenv pillow requests kivy==2.3.0 buildozer
 
       - name: Auto-Generate Fresh Configuration
         run: |
-          # Сносим старый конфиг и выдаем абсолютные права
+          # Вичищаємо старі файли та ставимо повні права
           rm -f buildozer.spec
           chmod -R 777 .
           
-          # Инициализируем чистый спек через локальный пип
+          # Ініціалізуємо свіжий Buildozer
           buildozer init
           
-          # Настройки под твой Realme GT 5G
+          # --- СУВOРІ НАЛAШТУВАННЯ ПІД REALME GT 5G ТА АРТИ ---
           sed -i 's/android.minapi = .*/android.minapi = 29/' buildozer.spec
-          sed -i 's/android.api = .*/android.api = 35/' buildozer.spec
+          sed -i 's/android.api = .*/android.api = 33/' buildozer.spec
           sed -i 's/android.archs = .*/android.archs = arm64-v8a/' buildozer.spec
-          
-          # Ресурсы: твой main.py, фиолетовый фон и неоновая иконка
           sed -i 's/source.include_exts = .*/source.include_exts = py,png,json/' buildozer.spec
           sed -i 's/requirements = .*/requirements = python3,kivy==2.3.0,pillow,requests/' buildozer.spec
+          
+          # Примусово прописуємо іконку та заставку
           sed -i 's/# icon.filename = .*/icon.filename = icon.png/' buildozer.spec
+          sed -i 's/# presplash.filename = .*/presplash.filename = yui_splash.png/' buildozer.spec
+          
+          # Погоджуємося з ліцензіями автоматично, щоб SDK не падав
+          sed -i 's/# android.accept_sdk_license = .*/android.accept_sdk_license = True/' buildozer.spec
 
-      - name: Compile Official Yui Release APK
+      - name: Build Clean Purple APK via Raw Buildozer
         run: |
-          # Автономная сборка пакета
+          # Запускаємо чисту збірку в обхід багнутих екшенів
           yes | buildozer android debug
 
       - name: Upload Clean Purple APK to Artifacts
