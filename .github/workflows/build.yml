@@ -8,62 +8,34 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Set up Python Environment
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install System Dependencies
-        run: |
-          pip install --user --upgrade buildozer cython virtualenv requests pillow
-          sudo apt-get update
-          sudo apt-get install -y git zip unzip colordiff ccache autoconf libtool pkg-config zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev libsqlite3-dev sqlite3 bzip2 libbz2-dev libltdl-dev libgmp-dev execstack libstdc++6
-
-      - name: Install Android SDK Command Line Tools
-        run: |
-          mkdir -p android-sdk/cmdline-tools
-          cd android-sdk/cmdline-tools
-          wget https://google.com
-          unzip commandlinetools-linux-11076708_latest.zip
-          mv cmdline-tools latest
-          cd ../..
-          export ANDROID_HOME=$PWD/android-sdk
-          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
-          yes | sdkmanager --sdk_root=$ANDROID_HOME "platform-tools" "platforms;android-35" "build-tools;35.0.0"
-
       - name: Auto-Generate Fresh Configuration
         run: |
+          # Полностью вычищаем старый мусор и ставим права
           rm -f buildozer.spec
           chmod -R 777 .
-          buildozer init
           
-          # Настройки под твой Realme GT 5G
+          # Генерируем базовый конфиг
+          pip install --user buildozer
+          ~/.local/bin/buildozer init
+          
+          # Жесткие настройки под твой Realme и сочные арты
           sed -i 's/android.minapi = .*/android.minapi = 29/' buildozer.spec
           sed -i 's/android.api = .*/android.api = 35/' buildozer.spec
           sed -i 's/android.archs = .*/android.archs = arm64-v8a/' buildozer.spec
-          
-          # Ресурсы
           sed -i 's/source.include_exts = .*/source.include_exts = py,png,json/' buildozer.spec
           sed -i 's/requirements = .*/requirements = python3,kivy==2.3.0,pillow,requests/' buildozer.spec
           sed -i 's/# icon.filename = .*/icon.filename = icon.png/' buildozer.spec
 
-      - name: Compile Official Yui Release APK
-        run: |
-          export ANDROID_HOME=$PWD/android-sdk
-          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
-          yes | buildozer android debug
+      - name: Build Clean APK via Official Buildozer Docker Container
+        uses: ArtemGovorov/buildozer-action@v1
+        with:
+          command: 'android debug'
 
       - name: Upload Clean Purple APK to Artifacts
         uses: actions/upload-artifact@v4
