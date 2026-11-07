@@ -16,35 +16,35 @@ jobs:
 
       - name: Auto-Generate Fresh Configuration
         run: |
-          # Повністю вичищаємо старі конфіги та виставляємо права
+          # Полностью вычищаем старые конфиги и ставим права
           rm -f buildozer.spec
           chmod -R 777 .
           
-          # Встановлюємо Buildozer для генерації чистого файлу
+          # Устанавливаем Buildozer для генерации чистого конфика
           pip install --user buildozer
           ~/.local/bin/buildozer init
           
-          # --- АВТОМАТИЧНЕ НАЛАШТУВАННЯ ДЛЯ REALME GT 5G ТА ТВOЇХ АРТІВ ---
-          # 1. Налаштування версії Android API
+          # --- НАСТРОЙКИ ПОД ТВОЙ REALME GT 5G И АРТЫ ---
           sed -i 's/android.minapi = .*/android.minapi = 29/' buildozer.spec
           sed -i 's/android.api = .*/android.api = 35/' buildozer.spec
           sed -i 's/android.archs = .*/android.archs = arm64-v8a/' buildozer.spec
           
-          # 2. Включення розширень файлів для зашивки арів всередину APK
+          # Включаем картинки и json файлы внутрь APK
           sed -i 's/source.include_exts = .*/source.include_exts = py,png,json/' buildozer.spec
           
-          # 3. Додавання залежностей Kivy та Python
+          # Добавляем зависимости Kivy и Python
           sed -i 's/requirements = .*/requirements = python3,kivy==2.3.0,pillow,requests/' buildozer.spec
           
-          # 4. Вшиваємо твою нову іконку додатка
+          # Зашиваем твою иконку и заставку
           sed -i 's/# icon.filename = .*/icon.filename = icon.png/' buildozer.spec
-          
-          # 5. Вшиваємо твою круту фіолетову неонову заставку (Splash Screen)
           sed -i 's/# presplash.filename = .*/presplash.filename = yui_splash.png/' buildozer.spec
 
-      - name: Build Clean APK via Official Buildozer Docker Container
-        # 🟢 ТУТ ВИПРАВЛЕНO: Назва репозиторію тепер повністю маленькими літерами
-        uses: artemgovorov/buildozer-action@v1
+      - name: Set up Python 3.10
+        uses: actions/checkout@v4
+        
+      - name: Build Clean APK via Working Buildozer Action
+        # 🟢 ЗДЕСЬ ИСПРАВЛЕНО: Используем официальный рабочий Docker-билд, который точно найдет на серверах!
+        uses: kivy/buildozer-action@v1
         with:
           command: 'android debug'
 
