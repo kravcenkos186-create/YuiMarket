@@ -8,7 +8,6 @@ on:
 
 jobs:
   build:
-    # Используем проверенный и быстрый сервер
     runs-on: ubuntu-latest
 
     steps:
@@ -23,43 +22,37 @@ jobs:
       - name: Install System Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev libbz2-dev libsqlite3-dev libssl-dev libgdbm-dev libgdbm-compat-dev liblzma-dev libffi-dev uuid-dev tar docutils reverse-depends
+          # 🟢 ТУТ ИСПРАВЛЕНО: Убрали проблемный reverse-depends, остальное ставим начисто
+          sudo apt-get install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev libbz2-dev libsqlite3-dev libssl-dev libgdbm-dev libgdbm-compat-dev liblzma-dev libffi-dev uuid-dev tar docutils
           pip install --upgrade pip
-          # Строго фиксируем зависимости, чтобы Buildozer не спотыкался
+          # Строго фиксируем Cython под Kivy 2.3.0
           pip install "cython<3.0.0" virtualenv pillow requests Kivy==2.3.0 buildozer
 
       - name: Auto-Generate Fresh Configuration
         run: |
-          # Вычищаем старые остатки
           rm -f buildozer.spec
           chmod -R 777 .
           
-          # Генерируем новый конфиг с нуля
           buildozer init
           
-          # --- СУВОРЫЕ НАСТРОЙКИ ПОД REALME GT 5G И АРТЫ ---
+          # --- НАСТРОЙКИ ПОД ТВОЙ REALME GT 5G И АРТЫ ---
           sed -i 's/android.minapi = .*/android.minapi = 29/' buildozer.spec
           sed -i 's/android.api = .*/android.api = 33/' buildozer.spec
           sed -i 's/android.archs = .*/android.archs = arm64-v8a/' buildozer.spec
-          
-          # Зашиваем расширения файлов
           sed -i 's/source.include_exts = .*/source.include_exts = py,png,json/' buildozer.spec
           sed -i 's/requirements = .*/requirements = python3,kivy==2.3.0,pillow,requests/' buildozer.spec
           
-          # Прописываем иконку и заставку
+          # Прописываем иконку и заставку Юи
           sed -i 's/# icon.filename = .*/icon.filename = icon.png/' buildozer.spec
           sed -i 's/# presplash.filename = .*/presplash.filename = yui_splash.png/' buildozer.spec
           
           # Автоматически принимаем лицензии Google SDK
           sed -i 's/# android.accept_sdk_license = .*/android.accept_sdk_license = True/' buildozer.spec
-          
-          # Включаем логирование на максимум, чтобы видеть прогресс
           sed -i 's/log_level = .*/log_level = 2/' buildozer.spec
 
       - name: Build Clean APK via Raw Commands
         run: |
-          # 🟢 ТУТ ВСЕ ИСПРАВЛЕНО: Никаких сторонних экшенов! 
-          # Запускаем чистую сборку напрямую в Linux-окружении
+          # Запускаем чистую сборку напрямую в окружении Linux
           yes | buildozer android debug
 
       - name: Upload Clean Purple APK to Artifacts
