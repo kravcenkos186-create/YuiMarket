@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
 
     steps:
       - name: Checkout repository
@@ -23,37 +23,36 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses5-dev libbz2-dev libsqlite3-dev libssl-dev libgdbm-dev libgdbm-compat-dev liblzma-dev libffi-dev uuid-dev tar docutils reverse-depends
-          # Додаткові залежності для Kivy/Клієнта
           pip install --upgrade pip
-          pip install cython virtualenv pillow requests kivy==2.3.0 buildozer
+          # Сувора фіксація стабільного Cython під Kivy 2.3.0
+          pip install "cython<3.0.0" virtualenv pillow requests kivy==2.3.0 buildozer
 
       - name: Auto-Generate Fresh Configuration
         run: |
-          # Вичищаємо старі файли та ставимо повні права
           rm -f buildozer.spec
           chmod -R 777 .
-          
-          # Ініціалізуємо свіжий Buildozer
           buildozer init
           
-          # --- СУВOРІ НАЛAШТУВАННЯ ПІД REALME GT 5G ТА АРТИ ---
+          # --- СТАБІЛЬНІ НАЛАШТУВАННЯ ДЛЯ REALME GT 5G ---
           sed -i 's/android.minapi = .*/android.minapi = 29/' buildozer.spec
           sed -i 's/android.api = .*/android.api = 33/' buildozer.spec
           sed -i 's/android.archs = .*/android.archs = arm64-v8a/' buildozer.spec
           sed -i 's/source.include_exts = .*/source.include_exts = py,png,json/' buildozer.spec
           sed -i 's/requirements = .*/requirements = python3,kivy==2.3.0,pillow,requests/' buildozer.spec
           
-          # Примусово прописуємо іконку та заставку
+          # Вшиваємо твої арти
           sed -i 's/# icon.filename = .*/icon.filename = icon.png/' buildozer.spec
           sed -i 's/# presplash.filename = .*/presplash.filename = yui_splash.png/' buildozer.spec
-          
-          # Погоджуємося з ліцензіями автоматично, щоб SDK не падав
           sed -i 's/# android.accept_sdk_license = .*/android.accept_sdk_license = True/' buildozer.spec
+          
+          # 🟢 ГОЛОВНЕ: Вмикаємо лог на максимум, щоб бачити кожен крок збірки!
+          sed -i 's/log_level = .*/log_level = 2/' buildozer.spec
 
-      - name: Build Clean Purple APK via Raw Buildozer
-        run: |
-          # Запускаємо чисту збірку в обхід багнутих екшенів
-          yes | buildozer android debug
+      - name: Build Clean APK via Kivy Action
+        # Використовуємо офіційний Docker, але на стабільній Ubuntu 20.04
+        uses: kivy/buildozer-action@v1
+        with:
+          command: 'android debug'
 
       - name: Upload Clean Purple APK to Artifacts
         uses: actions/upload-artifact@v4
