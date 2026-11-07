@@ -52,8 +52,11 @@ jobs:
       - name: Build Android debug APK
         run: |
           set +e
-          yes | buildozer -v android debug
-          status=${PIPESTATUS[1]}
+          yes | buildozer -v android debug 2>&1 | tee build.log
+          statuses=( "${PIPESTATUS[@]}" )
+          status=${statuses[1]}
+          echo "---- КОРОТКИЙ ЗВІТ ПРО ПОМИЛКИ ----"
+          grep -n -B 8 -A 12 -E 'ERROR:|Error:|error:|FAILED|Failed' build.log | tail -n 160 || true
           exit "$status"
 
       - name: Upload APK
