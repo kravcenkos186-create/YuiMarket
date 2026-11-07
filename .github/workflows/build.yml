@@ -16,15 +16,15 @@ jobs:
 
       - name: Auto-Generate Fresh Configuration
         run: |
-          # Полностью вычищаем старый мусор и ставим права
+          # Вичищаємо старі конфлікти та ставимо права
           rm -f buildozer.spec
           chmod -R 777 .
           
-          # Генерируем базовый конфиг
+          # Тимчасово ставимо легкий булдозер для генерації файлу специфікації
           pip install --user buildozer
           ~/.local/bin/buildozer init
           
-          # Жесткие настройки под твой Realme и сочные арты
+          # Налаштування під твій Realme GT 5G, прозорий арт та неонову іконку
           sed -i 's/android.minapi = .*/android.minapi = 29/' buildozer.spec
           sed -i 's/android.api = .*/android.api = 35/' buildozer.spec
           sed -i 's/android.archs = .*/android.archs = arm64-v8a/' buildozer.spec
@@ -32,9 +32,10 @@ jobs:
           sed -i 's/requirements = .*/requirements = python3,kivy==2.3.0,pillow,requests/' buildozer.spec
           sed -i 's/# icon.filename = .*/icon.filename = icon.png/' buildozer.spec
 
-      - name: Build Clean APK via Official Buildozer Docker Container
-        uses: ArtemGovorov/buildozer-action@v1
+      - name: Build Clean APK via Official Kivy Buildozer Action
+        uses: kivy/buildozer-action@v1
         with:
+          buildozer_version: 'stable'
           command: 'android debug'
 
       - name: Upload Clean Purple APK to Artifacts
