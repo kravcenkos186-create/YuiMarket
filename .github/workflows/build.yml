@@ -20,23 +20,12 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Install Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Accept Android Licenses Automatically
-        run: |
-          yes | sdkmanager --licenses || true
-
-      - name: Install Build Tools
-        run: |
-          yes | sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
-
       - name: Set up Python Environment
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install Buildozer and Dependencies
+      - name: Install Buildozer and Linux Dependencies
         run: |
           pip install --user --upgrade buildozer cython virtualenv
           sudo apt-get update
@@ -44,19 +33,18 @@ jobs:
 
       - name: Force Android 10 to Newest API Support
         run: |
-          # Примусово створюємо конфіг buildozer.spec прямо в хмарі, якщо його немає
+          # Створюємо конфіг з нуля з правильними інструкціями
           buildozer init
-          
-          # Твої налаштування під Realme та картинку
           sed -i 's/android.minapi = .*/android.minapi = 29/' buildozer.spec
           sed -i 's/android.api = .*/android.api = 35/' buildozer.spec
           sed -i 's/android.archs = .*/android.archs = arm64-v8a/' buildozer.spec
           sed -i 's/source.include_exts = .*/source.include_exts = py,png,json/' buildozer.spec
           sed -i 's/requirements = .*/requirements = python3,kivy,pillow,requests/' buildozer.spec
-          
-      - name: Build Clean Android 10+ APK
+
+      - name: Build Clean Android 10+ APK via Buildozer Autonomous SDK
         run: |
-          buildozer android debug
+          # Автоматично приймаємо ліцензії Гугла прямо всередині самого Булдозера
+          yes | buildozer android debug
         continue-on-error: true
 
       - name: Upload Working APK to Artifacts
