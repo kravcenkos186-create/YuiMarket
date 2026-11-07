@@ -22,17 +22,28 @@ jobs:
           java-version: '17'
 
       - name: Install Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
+        with:
+          accept-android-sdk-licenses: false
+          log-accepted-android-sdk-licenses: false
+          packages: ''
 
-      - name: Accept Android Licenses Automatically
+      - name: Accept Android SDK licenses
+        shell: bash
         run: |
-          yes | sdkmanager --licenses || true
+          set +o pipefail
+          yes | sdkmanager --licenses
+          status=${PIPESTATUS[1]}
+          set -o pipefail
+          exit "$status"
 
-      - name: Install Build Tools
+      - name: Install Android packages
         run: |
-          yes | sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Build APK
+      - name: Check Android SDK
         run: |
-          echo "Android SDK installed and licensed successfully!"
+          java -version
+          sdkmanager --list_installed
+          echo "Android SDK installed successfully"
           
