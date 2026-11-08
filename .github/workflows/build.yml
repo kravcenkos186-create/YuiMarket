@@ -5,64 +5,98 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
-
       - name: Install System Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y git zip unzip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libbz2-dev libsqlite3-dev libssl-dev libgdbm-dev libgdbm-compat-dev liblzma-dev libffi-dev uuid-dev tar docutils
-          pip install --upgrade pip
-          pip install "cython<3.0.0" virtualenv pillow requests Kivy==2.3.0 buildozer
-
+          sudo apt-get install -y python3-pip python-is-python3 git zip unzip autoconf automake libtool libtool-bin autoconf-archive m4 pkg-config zlib1g-dev libncurses5-dev libbz2-dev libsqlite3-dev libssl-dev libgdbm-dev libgdbm-compat-dev liblzma-dev libffi-dev uuid-dev tar docutils
+          python3 -m pip install --upgrade pip
+          python3 -m pip install "cython<3.0.0" virtualenv pillow requests Kivy==2.3.0 buildozer
+      - name: Cache python-for-android source packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.buildozer/android/packages
+          key: p4a-source-packages-${{ runner.os }}-sdl2-mixer-openssl-v3
+      - name: Pre-download SDL2_mixer with retries
+        run: |
+          set -e
+          mkdir -p "$HOME/.buildozer/android/packages"
+          PACKAGE_DIR="$HOME/.buildozer/android/packages/sdl2_mixer"
+          ARCHIVE="$PACKAGE_DIR/SDL2_mixer-2.6.3.tar.gz"
+          MARKER="$PACKAGE_DIR/.mark-SDL2_mixer-2.6.3.tar.gz"
+          mkdir -p "$PACKAGE_DIR"
+          if [ ! -s "$ARCHIVE" ] || ! tar -tzf "$ARCHIVE" >/dev/null 2>&1; then
+            rm -f "$ARCHIVE" "$MARKER"
+            curl --fail --location --show-error --retry 8 --retry-all-errors --retry-delay 5 --retry-max-time 600 "https://www.libsdl.org/projects/SDL_mixer/release/SDL2_mixer-2.6.3.tar.gz" --output "$ARCHIVE"
+          fi
+          test -s "$ARCHIVE"
+          tar -tzf "$ARCHIVE" >/dev/null
+          touch "$MARKER"
+          echo "SDL2_mixer source archive is cached in python-for-android's recipe directory."
+      - name: Pre-download OpenSSL with retries and checksum
+        run: |
+          set -euo pipefail
+          PACKAGE_DIR="$HOME/.buildozer/android/packages/openssl"
+          ARCHIVE="$PACKAGE_DIR/openssl-3.3.1.tar.gz"
+          MARKER="$PACKAGE_DIR/.mark-openssl-3.3.1.tar.gz"
+          EXPECTED_SHA256="777cd596284c883375a2a7a11bf5d2786fc5413255efab20c50d6ffe6d020b7e"
+          mkdir -p "$PACKAGE_DIR"
+          if [ ! -s "$ARCHIVE" ] || [ "$(sha256sum "$ARCHIVE" | awk '{print $1}')" != "$EXPECTED_SHA256" ]; then
+            rm -f "$ARCHIVE" "$MARKER"
+            curl --fail --location --show-error --retry 8 --retry-all-errors --retry-delay 5 --retry-max-time 600 "https://github.com/openssl/openssl/releases/download/openssl-3.3.1/openssl-3.3.1.tar.gz" --output "$ARCHIVE"
+          fi
+          ACTUAL_SHA256="$(sha256sum "$ARCHIVE" | awk '{print $1}')"
+          test "$ACTUAL_SHA256" = "$EXPECTED_SHA256"
+          tar -tzf "$ARCHIVE" >/dev/null
+          touch "$MARKER"
+          echo "Verified OpenSSL 3.3.1 source archive is cached for python-for-android."
       - name: Auto-Generate Fresh Configuration
         run: |
           rm -f buildozer.spec
           chmod -R 777 .
-          
           buildozer init
-          
-          # --- СТАБІЛЬНІ НАЛАШТУВАННЯ ПІД REALME GT 5G ТА АРТИ ---
           sed -i 's/android.minapi = .*/android.minapi = 29/' buildozer.spec
           sed -i 's/android.api = .*/android.api = 33/' buildozer.spec
           sed -i 's/android.archs = .*/android.archs = arm64-v8a/' buildozer.spec
           sed -i 's/source.include_exts = .*/source.include_exts = py,png,json/' buildozer.spec
-          sed -i 's/requirements = .*/requirements = python3,kivy==2.3.0,pillow,requests/' buildozer.spec
-          
-          # Прописуємо іконку та заставку Юі
+          sed -i 's/requirements = .*/requirements = python3==3.12.10,hostpython3==3.12.10,kivy==2.3.0,pillow,requests/' buildozer.spec
           sed -i 's/# icon.filename = .*/icon.filename = icon.png/' buildozer.spec
           sed -i 's/# presplash.filename = .*/presplash.filename = yui_splash.png/' buildozer.spec
-          
-          # Автоматично приймаємо ліцензії Google SDK
           sed -i 's/# android.accept_sdk_license = .*/android.accept_sdk_license = True/' buildozer.spec
           sed -i 's/log_level = .*/log_level = 2/' buildozer.spec
-
       - name: Build Clean APK via Raw Commands
         run: |
-          # 🟢 ТУТ ВИПРАВЛЕНO: Спочатку генеруємо комерційний main.py з yui_src.py, а потім запускаємо збірку!
           python yui_build.py
-          buildozer android debug
-
+          python -m py_compile main.py
+          for attempt in 1 2 3; do
+            echo "APK build attempt ${attempt}/3"
+            if buildozer android debug; then
+              echo "APK build completed successfully."
+              exit 0
+            fi
+            if [ "${attempt}" -lt 3 ]; then
+              echo "Build failed; retrying in 30 seconds..."
+              sleep 30
+            fi
+          done
+          echo "APK build failed after 3 attempts."
+          exit 1
       - name: Upload Clean Purple APK to Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Yui-Commercial-Beta-APK
           path: bin/*.apk
-          
