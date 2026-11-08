@@ -25,9 +25,6 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # 🟢 ШАГ ИСПРАВЛЕНИЯ: Полностью убрали багнутый setup-android.
-      # Теперь Buildozer сам скачает чистый рабочий SDK без системных конфликтов.
-
       - name: Install System Dependencies
         run: |
           sudo apt-get update
@@ -59,8 +56,9 @@ jobs:
 
       - name: Build Clean APK via Raw Commands
         run: |
-          # Запускаем чистую сборку. Buildozer сам развернет рабочий SDK.
-          yes | buildozer android debug
+          # 🟢 ТУТ ИСПРАВЛЕНО: Убрали багнутый "yes |", запускаем чистый Buildozer. 
+          # Он сам примет лицензии благодаря флагу accept_sdk_license в конфиге.
+          buildozer android debug
 
       - name: Upload Clean Purple APK to Artifacts
         uses: actions/upload-artifact@v4
