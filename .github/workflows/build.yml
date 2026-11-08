@@ -45,7 +45,7 @@ jobs:
           mkdir -p "$PACKAGE_DIR"
           if [ ! -s "$ARCHIVE" ] || ! tar -tzf "$ARCHIVE" >/dev/null 2>&1; then
             rm -f "$ARCHIVE" "$MARKER"
-            curl --fail --location --show-error --retry 12 --retry-all-errors --retry-delay 5 --retry-max-time 900 "https://github.com/libsdl-org/SDL_mixer/releases/download/release-2.6.3/SDL2_mixer-2.6.3.tar.gz" --output "$ARCHIVE"
+            curl --fail --location --show-error --retry 8 --retry-all-errors --retry-delay 5 --retry-max-time 600 "https://www.libsdl.org/projects/SDL_mixer/release/SDL2_mixer-2.6.3.tar.gz" --output "$ARCHIVE"
           fi
           test -s "$ARCHIVE"
           tar -tzf "$ARCHIVE" >/dev/null
