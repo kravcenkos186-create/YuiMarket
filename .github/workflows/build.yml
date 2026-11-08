@@ -1,4 +1,4 @@
-name: Build Yui Market APK
+name: Build Yui APK
 
 on:
   workflow_dispatch:
@@ -8,7 +8,9 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # 22.04 стабільніший для python-for-android, ніж ubuntu-latest (24.04)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
 
     steps:
       - name: Checkout repository
@@ -25,44 +27,44 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Install System Dependencies
+      - name: Cache Android SDK/NDK (прискорює повторні збірки)
+        uses: actions/cache@v4
+        with:
+          path: ~/.buildozer
+          key: buildozer-${{ hashFiles('buildozer.spec') }}
+
+      - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y git zip unzip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libbz2-dev libsqlite3-dev libssl-dev libgdbm-dev libgdbm-compat-dev liblzma-dev libffi-dev uuid-dev tar docutils
-          pip install --upgrade pip
-          pip install "cython<3.0.0" virtualenv pillow requests Kivy==2.3.0 buildozer
+          sudo apt-get install -y git zip unzip autoconf automake libtool pkg-config \
+            build-essential ccache cmake zlib1g-dev libncurses5-dev libncursesw5-dev \
+            libtinfo5 libffi-dev libssl-dev libltdl-dev
 
-      - name: Auto-Generate Fresh Configuration
+      - name: Install Python tools
         run: |
-          rm -f buildozer.spec
-          chmod -R 777 .
-          
-          buildozer init
-          
-          # --- СТАБИЛЬНЫЕ НАСТРОЙКИ ПОД REALME GT 5G ---
-          sed -i 's/android.minapi = .*/android.minapi = 29/' buildozer.spec
-          sed -i 's/android.api = .*/android.api = 33/' buildozer.spec
-          sed -i 's/android.archs = .*/android.archs = arm64-v8a/' buildozer.spec
-          sed -i 's/source.include_exts = .*/source.include_exts = py,png,json/' buildozer.spec
-          sed -i 's/requirements = .*/requirements = python3,kivy==2.3.0,pillow,requests/' buildozer.spec
-          
-          # Прописываем иконку и заставку Юи
-          sed -i 's/# icon.filename = .*/icon.filename = icon.png/' buildozer.spec
-          sed -i 's/# presplash.filename = .*/presplash.filename = yui_splash.png/' buildozer.spec
-          
-          # Автоматически принимаем лицензии Google SDK
-          sed -i 's/# android.accept_sdk_license = .*/android.accept_sdk_license = True/' buildozer.spec
-          sed -i 's/log_level = .*/log_level = 2/' buildozer.spec
+          python -m pip install --upgrade pip wheel setuptools
+          pip install "cython==0.29.36" virtualenv buildozer==1.5.0
 
-      - name: Build Clean APK via Raw Commands
+      - name: Build APK
         run: |
-          # 🟢 ТУТ ИСПРАВЛЕНО: Убрали багнутый "yes |", запускаем чистый Buildozer. 
-          # Он сам примет лицензии благодаря флагу accept_sdk_license в конфиге.
-          buildozer android debug
+          set -o pipefail
+          buildozer -v android debug 2>&1 | tee build.log
 
-      - name: Upload Clean Purple APK to Artifacts
+      - name: Show the real error (only if the build failed)
+        if: failure()
+        run: |
+          grep -n -i -E "error|failed|traceback|no such file|not found" build.log | grep -v -i "warning" | tail -60
+
+      - name: Upload build log
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Yui-Commercial-Beta-APK
+          name: Yui-build-log
+          path: build.log
+          if-no-files-found: ignore
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Yui-APK
           path: bin/*.apk
-          
