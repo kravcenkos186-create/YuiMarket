@@ -39,34 +39,49 @@ jobs:
         run: |
           rm -f buildozer.spec
           chmod -R 777 .
-          
+
           buildozer init
-          
+
           # --- СТАБІЛЬНІ НАЛАШТУВАННЯ ПІД REALME GT 5G ТА АРТИ ---
           sed -i 's/android.minapi = .*/android.minapi = 29/' buildozer.spec
           sed -i 's/android.api = .*/android.api = 33/' buildozer.spec
           sed -i 's/android.archs = .*/android.archs = arm64-v8a/' buildozer.spec
           sed -i 's/source.include_exts = .*/source.include_exts = py,png,json/' buildozer.spec
           sed -i 's/requirements = .*/requirements = python3,kivy==2.3.0,pillow,requests/' buildozer.spec
-          
+
           # Прописуємо іконку та заставку Юі
           sed -i 's/# icon.filename = .*/icon.filename = icon.png/' buildozer.spec
           sed -i 's/# presplash.filename = .*/presplash.filename = yui_splash.png/' buildozer.spec
-          
+
           # Автоматично приймаємо ліцензії Google SDK
           sed -i 's/# android.accept_sdk_license = .*/android.accept_sdk_license = True/' buildozer.spec
           sed -i 's/log_level = .*/log_level = 2/' buildozer.spec
 
       - name: Build Clean APK via Raw Commands
         run: |
-          # 🟢 ТУТ ВИПРАВЛЕНO: Спочатку генеруємо комерційний main.py з yui_src.py, а потім запускаємо збірку!
+          # Спочатку генеруємо комерційний main.py з yui_src.py.
           python yui_build.py
           python -m py_compile main.py
-          buildozer android debug
+
+          # Тимчасові мережеві збої (HTTP 504) повторюємо до трьох разів.
+          for attempt in 1 2 3; do
+            echo "APK build attempt ${attempt}/3"
+            if buildozer android debug; then
+              echo "APK build completed successfully."
+              exit 0
+            fi
+
+            if [ "${attempt}" -lt 3 ]; then
+              echo "Build failed; retrying in 30 seconds..."
+              sleep 30
+            fi
+          done
+
+          echo "APK build failed after 3 attempts."
+          exit 1
 
       - name: Upload Clean Purple APK to Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Yui-Commercial-Beta-APK
           path: bin/*.apk
-          
