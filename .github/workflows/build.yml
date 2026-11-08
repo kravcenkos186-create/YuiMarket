@@ -31,7 +31,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.buildozer
-          key: buildozer-${{ hashFiles('buildozer.spec') }}
+          key: buildozer-v1-${{ hashFiles('**/buildozer.spec') }}
 
       - name: Install system dependencies
         run: |
@@ -48,12 +48,63 @@ jobs:
       - name: Build APK
         run: |
           set -o pipefail
-          buildozer -v android debug 2>&1 | tee build.log
+
+          # 1) знаходимо папку з main.py (корінь репозиторію або підпапка, напр. app/)
+          MAIN=$(find . -maxdepth 2 -name main.py -not -path './.*' | head -n 1)
+          if [ -z "$MAIN" ]; then
+            echo "ПОМИЛКА: main.py не знайдено в репозиторії. Ось що є:"
+            ls -R . | head -60
+            exit 1
+          fi
+          cd "$(dirname "$MAIN")"
+          echo "Збираю з папки: $(pwd)"
+          ls -la
+
+          # 2) якщо buildozer.spec забули завантажити — створюємо перевірений
+          if [ ! -f buildozer.spec ]; then
+            echo "buildozer.spec не знайдено — створюю типовий"
+            cat > buildozer.spec <<'SPEC'
+          [app]
+          title = Yui AI
+          package.name = yuiai
+          package.domain = org.yui
+          source.dir = .
+          source.include_exts = py,png,jpg,json
+          source.exclude_dirs = bin,.git,.github,venv,__pycache__
+          version = 1.0.0
+          requirements = python3,openssl,kivy==2.3.0,requests,urllib3,idna,certifi,charset-normalizer
+          orientation = portrait
+          fullscreen = 0
+          android.presplash_color = #E8DEFA
+          android.permissions = INTERNET
+          android.api = 33
+          android.minapi = 24
+          android.ndk = 25b
+          android.ndk_api = 24
+          android.archs = arm64-v8a
+          android.accept_sdk_license = True
+          android.allow_backup = False
+          p4a.branch = v2024.01.21
+
+          [buildozer]
+          log_level = 2
+          warn_on_root = 1
+          SPEC
+            if [ -f icon.png ]; then
+              sed -i '/^\[app\]/a icon.filename = %(source.dir)s/icon.png' buildozer.spec
+            fi
+            if [ -f yui_splash.png ]; then
+              sed -i '/^\[app\]/a presplash.filename = %(source.dir)s/yui_splash.png' buildozer.spec
+            fi
+          fi
+
+          # 3) збірка (весь лог іде в build.log у корені репозиторію)
+          buildozer -v android debug 2>&1 | tee "$GITHUB_WORKSPACE/build.log"
 
       - name: Show the real error (only if the build failed)
         if: failure()
         run: |
-          grep -n -i -E "error|failed|traceback|no such file|not found" build.log | grep -v -i "warning" | tail -60
+          grep -n -i -E "error|failed|traceback|no such file|not found|abandon" build.log | grep -v -i "warning" | tail -60 || true
 
       - name: Upload build log
         if: always()
@@ -67,4 +118,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Yui-APK
-          path: bin/*.apk
+          path: "**/bin/*.apk"
