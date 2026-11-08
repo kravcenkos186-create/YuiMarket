@@ -34,19 +34,23 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.buildozer/android/packages
-          key: p4a-source-packages-${{ runner.os }}-sdl2-mixer-2.6.3-v1
+          key: p4a-source-packages-${{ runner.os }}-sdl2-mixer-2.6.3-v2
       - name: Pre-download SDL2_mixer with retries
         run: |
           set -e
           mkdir -p "$HOME/.buildozer/android/packages"
-          ARCHIVE="$HOME/.buildozer/android/packages/SDL2_mixer-2.6.3.tar.gz"
+          PACKAGE_DIR="$HOME/.buildozer/android/packages/sdl2_mixer"
+          ARCHIVE="$PACKAGE_DIR/SDL2_mixer-2.6.3.tar.gz"
+          MARKER="$PACKAGE_DIR/.mark-SDL2_mixer-2.6.3.tar.gz"
+          mkdir -p "$PACKAGE_DIR"
           if [ ! -s "$ARCHIVE" ] || ! tar -tzf "$ARCHIVE" >/dev/null 2>&1; then
-            rm -f "$ARCHIVE"
+            rm -f "$ARCHIVE" "$MARKER"
             curl --fail --location --show-error --retry 12 --retry-all-errors --retry-delay 5 --retry-max-time 900 "https://github.com/libsdl-org/SDL_mixer/releases/download/release-2.6.3/SDL2_mixer-2.6.3.tar.gz" --output "$ARCHIVE"
           fi
           test -s "$ARCHIVE"
           tar -tzf "$ARCHIVE" >/dev/null
-          echo "SDL2_mixer source archive is present and readable."
+          touch "$MARKER"
+          echo "SDL2_mixer source archive is cached in python-for-android's recipe directory."
       - name: Auto-Generate Fresh Configuration
         run: |
           rm -f buildozer.spec
