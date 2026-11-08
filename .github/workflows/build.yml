@@ -73,7 +73,7 @@ jobs:
           sed -i 's/android.api = .*/android.api = 33/' buildozer.spec
           sed -i 's/android.archs = .*/android.archs = arm64-v8a/' buildozer.spec
           sed -i 's/source.include_exts = .*/source.include_exts = py,png,json/' buildozer.spec
-          sed -i 's/requirements = .*/requirements = python3,kivy==2.3.0,pillow,requests/' buildozer.spec
+          sed -i 's/requirements = .*/requirements = python3==3.12.10,hostpython3==3.12.10,kivy==2.3.0,pillow,requests/' buildozer.spec
           sed -i 's/# icon.filename = .*/icon.filename = icon.png/' buildozer.spec
           sed -i 's/# presplash.filename = .*/presplash.filename = yui_splash.png/' buildozer.spec
           sed -i 's/# android.accept_sdk_license = .*/android.accept_sdk_license = True/' buildozer.spec
